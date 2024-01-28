@@ -1,0 +1,15 @@
+#RPC
+RPC_URL = "https://rpc.ankr.com/eth"
+
+#contract addresses you want to filter
+ContractAddresses =[
+    "0x1BB9b64927e0C5e207C9DB4093b3738Eef5D8447",
+    "0x89d584A1EDB3A70B3B07963F9A3eA5399E38b136",
+]
+
+#scan block range
+FromBlock = 19096064
+ToBlock = 19096066
+
+#step depends on your rpc config
+Step = 300
