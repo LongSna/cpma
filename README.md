@@ -3,7 +3,7 @@ usage:
 `RPC_URL` - rpc url  
 `ContractAddresses`- contract addresses you want to filter  
 `FromBlock/ToBlock` - scan block range  
-`Step - step depends`- on your rpc config  
+`Step` - step depends on your rpc config  
 Example:  
 filter the addresses that have purchased   
 `0x1BB9b64927e0C5e207C9DB4093b3738Eef5D8447` and 
