@@ -53,7 +53,7 @@ func search_contract_data(client *ethclient.Client, fromBlock *big.Int, toBlock 
 	for _, vLog := range logs {
 		switch vLog.Topics[0].Hex() {
 		case logTransferSigHash.Hex():
-			ref1 = append(ref1, vLog.Topics[2].String()) //这里不能直接return TODO：返回[]string done
+			ref1 = append(ref1, vLog.Topics[2].String())
 		}
 	}
 
@@ -69,7 +69,7 @@ func put_data_into_chan(ch chan string, atomicCounter *atomicCounter, client *et
 
 	if err != nil {
 		atomic.AddUint64(&atomicCounter.number, 1)
-		ch <- "" //为了更新状态
+		ch <- "" //to update state
 		return
 	}
 
@@ -78,7 +78,7 @@ func put_data_into_chan(ch chan string, atomicCounter *atomicCounter, client *et
 	}
 
 	atomic.AddUint64(&atomicCounter.number, 1)
-	ch <- "" //为了更新状态
+	ch <- "" //to update state
 }
 
 func removeDuplicateElement(languages []string) []string {
@@ -129,7 +129,6 @@ func collect_address_data(client *ethclient.Client, step uint64, fromBlock *big.
 		if datas == "" {
 
 			if atomic_num >= task_counter {
-				//fmt.Print("\nBreak\n")
 				break
 			}
 			continue
@@ -137,7 +136,6 @@ func collect_address_data(client *ethclient.Client, step uint64, fromBlock *big.
 
 		value = append(value, datas)
 		counter_reader += 1
-		//fmt.Print(atomic_num, " ", task_counter, "\n")
 
 		if atomic_num >= task_counter {
 			break
@@ -178,7 +176,7 @@ func compare_mul_address_data(client *ethclient.Client, step uint64, fromBlock *
 			temp[item] = struct{}{}
 		}
 		var compared_data []string
-		for _, item := range ref[0] { //for test
+		for _, item := range ref[0] {
 			if _, ok := temp[item]; ok {
 				compared_data = append(compared_data, item)
 			}
@@ -195,6 +193,11 @@ func main() {
 		log.Panic(err)
 	}
 	log.SetOutput(os.Stdout)
+	log.SetFormatter(&log.TextFormatter{
+		ForceQuote:      true,
+		TimestampFormat: "2006-01-02 15:04:05",
+		FullTimestamp:   true,
+	})
 	client, _ := ethclient.Dial(config.RPC_URL)
 	length := len(config.ContractAddresses)
 	contractAddrs := make([]common.Address, length)
@@ -211,6 +214,6 @@ func main() {
 
 	log.Info(fmt.Sprint("————————————————Results————————————————"))
 	for _, addr := range result {
-		fmt.Printf("0x%s\n", fmt.Sprint(addr)[27:])
+		fmt.Printf("0x%s\n", fmt.Sprint(addr)[26:])
 	}
 }
