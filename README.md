@@ -1,6 +1,6 @@
 SET config.toml BEFORE USE.
 usage:
-RPC_URL - rpc url
+RPC_URL - rpc url\n
 ContractAddresses - contract addresses you want to filter
 FromBlock/ToBlock - scan block range
 Step - step depends on your rpc config
