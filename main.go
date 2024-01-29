@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"sync"
 	"sync/atomic"
 
 	"github.com/BurntSushi/toml"
@@ -25,7 +26,7 @@ type Config struct {
 }
 
 type atomicCounter struct {
-	number uint64
+	number int64
 }
 
 func newAtomicCounter() *atomicCounter {
@@ -43,7 +44,7 @@ func search_contract_data(client *ethclient.Client, fromBlock *big.Int, toBlock 
 
 	logs, err := client.FilterLogs(context.Background(), query)
 	if err != nil {
-		log.Error(fmt.Sprint("Failed to get blocks data from %s to %s:%s", fromBlock.String(), toBlock.String(), err))
+		log.Error(fmt.Sprintf("Failed to get blocks data from %s to %s:%s", fromBlock.String(), toBlock.String(), err))
 	}
 
 	logTransferSig := []byte("Transfer(address,address,uint256)")
@@ -64,21 +65,19 @@ func search_contract_data(client *ethclient.Client, fromBlock *big.Int, toBlock 
 	return nil, fmt.Errorf("noMsg")
 }
 
-func put_data_into_chan(ch chan string, atomicCounter *atomicCounter, client *ethclient.Client, fromBlock *big.Int, toBlock *big.Int, contractAddr common.Address) {
+func put_data_into_chan(wg *sync.WaitGroup, ch chan string, atomicCounter *atomicCounter, client *ethclient.Client, fromBlock *big.Int, toBlock *big.Int, contractAddr common.Address) {
 	data, err := search_contract_data(client, fromBlock, toBlock, contractAddr)
+	defer wg.Done()
 
 	if err != nil {
-		atomic.AddUint64(&atomicCounter.number, 1)
-		ch <- "" //to update state
+		atomic.AddInt64(&atomicCounter.number, 1)
 		return
 	}
 
 	for _, pdata := range data {
 		ch <- pdata
 	}
-
-	atomic.AddUint64(&atomicCounter.number, 1)
-	ch <- "" //to update state
+	atomic.AddInt64(&atomicCounter.number, 1)
 }
 
 func removeDuplicateElement(languages []string) []string {
@@ -96,48 +95,52 @@ func removeDuplicateElement(languages []string) []string {
 func collect_address_data(client *ethclient.Client, step uint64, fromBlock *big.Int, toBlock *big.Int, contractAddr common.Address) []string {
 
 	counter := uint64(0)
-
+	var wg sync.WaitGroup
 	ch := make(chan string)
-	defer close(ch)
 	var task_counter uint64
 	task_counter = 0
 	atomicCounter := newAtomicCounter()
 
-	for true {
+	for {
 		if counter+step+1 > (toBlock.Uint64() - fromBlock.Uint64()) {
 			break
 		}
-		go put_data_into_chan(ch, atomicCounter, client, big.NewInt(toBlock.Int64()+int64(counter)), big.NewInt(toBlock.Int64()+int64(counter)+int64(step)), contractAddr)
+		go put_data_into_chan(&wg, ch, atomicCounter, client, big.NewInt(toBlock.Int64()+int64(counter)), big.NewInt(toBlock.Int64()+int64(counter)+int64(step)), contractAddr)
+		wg.Add(1)
 
 		counter += step + 1
 		task_counter += 1
 		log.Info(fmt.Sprintf("START collect Task 「%d」for 「%s」", task_counter, contractAddr))
 	}
-	go put_data_into_chan(ch, atomicCounter, client, big.NewInt(fromBlock.Int64()+int64(counter)), toBlock, contractAddr)
-	log.Info(fmt.Sprintf("START collect Task 「%d」for 「%s」", task_counter, contractAddr))
+	go put_data_into_chan(&wg, ch, atomicCounter, client, big.NewInt(fromBlock.Int64()+int64(counter)), toBlock, contractAddr)
+	wg.Add(1)
 	task_counter += 1
+	log.Info(fmt.Sprintf("START collect Task 「%d」for 「%s」", task_counter, contractAddr))
+
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
 
 	var value []string
-	var cache_counter uint64
-	counter_reader := 0
+	var cache_counter int64
+
 	for datas := range ch {
-		atomic_num := atomic.LoadUint64(&atomicCounter.number)
+
+		atomic_num := atomic.LoadInt64(&atomicCounter.number)
 		if atomic_num != cache_counter {
 			cache_counter = atomic_num
 			log.Info(fmt.Sprintf("Collect Task process:「%d」/「%d」", cache_counter, task_counter))
 		}
 		if datas == "" {
-
-			if atomic_num >= task_counter {
+			if int64(task_counter) == atomic_num {
 				break
 			}
 			continue
 		}
 
 		value = append(value, datas)
-		counter_reader += 1
-
-		if atomic_num >= task_counter {
+		if int64(task_counter) == atomic_num {
 			break
 		}
 	}
@@ -165,7 +168,7 @@ func compare_mul_address_data(client *ethclient.Client, step uint64, fromBlock *
 		}
 	}
 
-	for true {
+	for {
 		log.Info("Start Compare Task")
 		if len(ref) <= 1 {
 			break
@@ -182,7 +185,7 @@ func compare_mul_address_data(client *ethclient.Client, step uint64, fromBlock *
 			}
 		}
 		ref[1] = compared_data
-		ref = append(ref[1:])
+		ref = ref[1:]
 	}
 	return ref[0]
 }
@@ -212,7 +215,7 @@ func main() {
 
 	result := compare_mul_address_data(client, config.Step, big.NewInt(config.FromBlock), big.NewInt(config.ToBlock), contractAddrs)
 
-	log.Info(fmt.Sprint("————————————————Results————————————————"))
+	log.Info("————————————————Results————————————————")
 	for _, addr := range result {
 		fmt.Printf("0x%s\n", fmt.Sprint(addr)[26:])
 	}
