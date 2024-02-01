@@ -17,7 +17,7 @@ RUNNING screenshot:
 
 output result:`0x45da98984b745a6ba1f4a67c842e63664d7d55f1`  
 
-This address corresponds to the two hashes(Under normal circumstances, there should be multiple addresses here.） 
+This address corresponds to the two hashes(Under normal circumstances, there should be multiple addresses here） 
 `0xe946798b8f1547ae0221196ece7b17c9a2e8dbcb48933dd4396d537102219d3b`and`0xc26de61580d510d6eedc96eae97c590157c841b8c4e11c2bb573b32a217ebad2`
 
 
