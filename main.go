@@ -48,12 +48,16 @@ func search_contract_data(client *ethclient.Client, fromBlock *big.Int, toBlock 
 	}
 
 	logTransferSig := []byte("Transfer(address,address,uint256)")
+	logERC404TransferSig := []byte("ERC20Transfer(address,address,uint256)")
 	logTransferSigHash := crypto.Keccak256Hash(logTransferSig)
+	logERC404TransferSigHash := crypto.Keccak256Hash(logERC404TransferSig)
 
 	var ref1 []string
 	for _, vLog := range logs {
 		switch vLog.Topics[0].Hex() {
 		case logTransferSigHash.Hex():
+			ref1 = append(ref1, vLog.Topics[2].String())
+		case logERC404TransferSigHash.Hex():
 			ref1 = append(ref1, vLog.Topics[2].String())
 		}
 	}
@@ -133,16 +137,9 @@ func collect_address_data(client *ethclient.Client, step uint64, fromBlock *big.
 			log.Info(fmt.Sprintf("Collect Task process:「%d」/「%d」", cache_counter, task_counter))
 		}
 		if datas == "" {
-			if int64(task_counter) == atomic_num {
-				break
-			}
 			continue
 		}
-
 		value = append(value, datas)
-		if int64(task_counter) == atomic_num {
-			break
-		}
 	}
 
 	return removeDuplicateElement(value)
@@ -173,6 +170,7 @@ func compare_mul_address_data(client *ethclient.Client, step uint64, fromBlock *
 		if len(ref) <= 1 {
 			break
 		}
+		fmt.Println(ref[0])
 		log.Info(fmt.Sprintf("Compare address process: left groups「%d」-minimum's group left length「%d」", len(ref), len(ref[0])))
 		temp := map[string]struct{}{}
 		for _, item := range ref[1] {
