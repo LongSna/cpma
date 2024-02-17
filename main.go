@@ -170,7 +170,6 @@ func compare_mul_address_data(client *ethclient.Client, step uint64, fromBlock *
 		if len(ref) <= 1 {
 			break
 		}
-		fmt.Println(ref[0])
 		log.Info(fmt.Sprintf("Compare address process: left groups「%d」-minimum's group left length「%d」", len(ref), len(ref[0])))
 		temp := map[string]struct{}{}
 		for _, item := range ref[1] {
